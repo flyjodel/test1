@@ -19,20 +19,20 @@
   <script>
     const API_URL = 'https://script.google.com/macros/s/AKfycbx7avDA94pLJOkq4S4oo_MlfPMnR87AbSISEizgh6F8M3Ify8cIaMA7nWvkzm8MYTLDdw/exec?action=tasks';
 
-    const statusEl = document.getElementById('status'77);
-    const tasksEl = document.getElementById('tasks');
-    const installBtn = document.getElementById('installBtn');
+  const statusEl = document.getElementById('status');
+  const tasksEl = document.getElementById('tasks');
+  const installBtn = document.getElementById('installBtn');
 
-    document.getElementById('loadBtn').addEventListener('click', loadTasks);
+  document.getElementById('loadBtn').addEventListener('click', loadTasks);
 
-    async function loadTasks() {
-      statusEl.textContent = 'Chargement...';
-      tasksEl.innerHTML = '';
+  function loadTasks() {
+    statusEl.textContent = 'Chargement...';
+    tasksEl.innerHTML = '';
 
+    const callbackName = 'handleTasks_' + Date.now();
+
+    window[callbackName] = function(data) {
       try {
-        const response = await fetch(API_URL);
-        const data = await response.json();
-
         if (!data.success) {
           throw new Error(data.error || 'Erreur inconnue');
         }
@@ -47,36 +47,50 @@
         statusEl.textContent = 'Tâches chargées';
       } catch (error) {
         statusEl.textContent = 'Erreur : ' + error.message;
+      } finally {
+        delete window[callbackName];
+        script.remove();
       }
-    }
+    };
 
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', async () => {
-        try {
-          await navigator.serviceWorker.register('./sw.js');
-          console.log('Service worker enregistré');
-        } catch (error) {
-          console.error('Erreur service worker', error);
-        }
-      });
-    }
+    const script = document.createElement('script');
+    script.src = API_BASE + '?action=tasks&callback=' + callbackName;
 
-    let deferredPrompt = null;
+    script.onerror = function() {
+      statusEl.textContent = 'Erreur de chargement de l’API';
+      delete window[callbackName];
+      script.remove();
+    };
 
-    window.addEventListener('beforeinstallprompt', (event) => {
-      event.preventDefault();
-      deferredPrompt = event;
-      installBtn.style.display = 'block';
+    document.body.appendChild(script);
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        await navigator.serviceWorker.register('./sw.js');
+        console.log('Service worker enregistré');
+      } catch (error) {
+        console.error('Erreur service worker', error);
+      }
     });
+  }
 
-    installBtn.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
+  let deferredPrompt = null;
 
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      installBtn.style.display = 'none';
-    });
-  </script>
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    deferredPrompt = event;
+    installBtn.style.display = 'block';
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installBtn.style.display = 'none';
+  });
+</script>
 </body>
 </html>
