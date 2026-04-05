@@ -31,6 +31,8 @@
 
     const callbackName = 'handleTasks_' + Date.now();
 
+    const script = document.createElement('script');
+
     window[callbackName] = function(data) {
       try {
         if (!data.success) {
@@ -53,7 +55,6 @@
       }
     };
 
-    const script = document.createElement('script');
     script.src = API_BASE + '?action=tasks&callback=' + callbackName;
 
     script.onerror = function() {
@@ -92,5 +93,6 @@
     installBtn.style.display = 'none';
   });
 </script>
+
 </body>
 </html>
